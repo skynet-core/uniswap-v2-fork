@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.15;
 
 import "../UniswapV2Pair.sol";
 import "./SafeMath.sol";
@@ -36,8 +36,8 @@ library UniswapV2Library {
                             factory,
                             keccak256(abi.encodePacked(token0, token1)), // salt
                             bytes32(
-                                0x7d76a9f08f47dc4a7f1a62a5bfd6f29d5d9ccac566d1f0f5b6621b6379e1bcc0
-                                // 0xf2f839eb2fcd14245bb1aac1b184d88767ec2ea8027d3b4467e0db3bfdad0a42 // this line is sensitive to any changes in code and solidity version
+                                0x2aae69ada05ba8291ff3ac1bafe946ffe5a8e9cd4314e78869eee113ff12ca17 // 0.8.15
+                                // 0x7d76a9f08f47dc4a7f1a62a5bfd6f29d5d9ccac566d1f0f5b6621b6379e1bcc0 // 0.8.9
                             ) // init hash code ...
                         )
                     )

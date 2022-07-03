@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.15;
 
 import "./interfaces/IUniswapV2Pair.sol";
 import "./UniswapV2ERC20.sol";

@@ -95,8 +95,10 @@ describe("EasyBit", () => {
     const assembler = await factory.deploy();
     await assembler.deployed();
     const code = await assembler.getPairByteCode();
-    const codeFor089 = "0x7d76a9f08f47dc4a7f1a62a5bfd6f29d5d9ccac566d1f0f5b6621b6379e1bcc0";
-    expect(code).to.equal(codeFor089); // 0.8.9
+    // const codeFor089 = "0x7d76a9f08f47dc4a7f1a62a5bfd6f29d5d9ccac566d1f0f5b6621b6379e1bcc0";
+    // expect(code).to.equal(codeFor089); // 0.8.9
+    const codeFor0815 = "0x2aae69ada05ba8291ff3ac1bafe946ffe5a8e9cd4314e78869eee113ff12ca17";
+    expect(code).to.equal(codeFor0815); // 0.8.15
   });
 
   it("factory must resolve pair address", async function () {

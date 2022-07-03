@@ -46,7 +46,7 @@ contract GenericToken is Context, IERC20, Ownable {
     IERC20 private immutable _busdToken;
 
     address public immutable _charityWalletAddress;
-    address public immutable _swapHelperAddress;
+    SwapHelper public immutable _swapHelper;
 
     IUniswapV2Router02 public immutable uniswapV2Router;
     address public immutable uniswapV2Pair;
@@ -101,14 +101,7 @@ contract GenericToken is Context, IERC20, Ownable {
         );
         _charityWalletAddress = charityWallet;
 
-        bytes memory bytecode = type(SwapHelper).creationCode;
-        bytes32 salt = keccak256(abi.encodePacked(_owner, charityWallet));
-        address helper;
-        assembly {
-            helper := create2(0, add(bytecode, 32), mload(bytecode), salt)
-        }
-        _swapHelperAddress = helper;
-        SwapHelper(_swapHelperAddress).initialize(address(this));
+        _swapHelper = new SwapHelper();
 
         _busdToken = IERC20(busdToken);
         _rOwned[_owner] = _rTotal;
@@ -121,13 +114,13 @@ contract GenericToken is Context, IERC20, Ownable {
         //exclude owner and this contract from fee
         _isExcludedFromFee[_owner] = true;
         _isExcludedFromFee[address(this)] = true;
-        _isExcludedFromFee[_swapHelperAddress] = true;
+        _isExcludedFromFee[address(_swapHelper)] = true;
 
         emit Transfer(address(0), _owner, _tTotal);
     }
 
     function swapHelper() public view returns (address) {
-        return _swapHelperAddress;
+        return address(_swapHelper);
     }
 
     function setPaused(bool value) public onlyOwner {
@@ -333,9 +326,6 @@ contract GenericToken is Context, IERC20, Ownable {
         emit SwapAndLiquifyEnabledUpdated(_enabled);
     }
 
-    //to recieve ETH from uniswapV2Router when swaping
-    receive() external payable {}
-
     function _reflectFee(uint256 rFee, uint256 tFee) private {
         _rTotal = _rTotal.sub(rFee);
         _tFeeTotal = _tFeeTotal.add(tFee);
@@ -445,11 +435,11 @@ contract GenericToken is Context, IERC20, Ownable {
     function _takeLiquidity(uint256 tLiquidity) private {
         uint256 currentRate = _getRate();
         uint256 rLiquidity = tLiquidity.mul(currentRate);
-        _rOwned[_swapHelperAddress] = _rOwned[_swapHelperAddress].add(
+        _rOwned[address(_swapHelper)] = _rOwned[address(_swapHelper)].add(
             rLiquidity
         );
-        if (_isExcluded[_swapHelperAddress])
-            _tOwned[_swapHelperAddress] = _tOwned[_swapHelperAddress].add(
+        if (_isExcluded[address(_swapHelper)])
+            _tOwned[address(_swapHelper)] = _tOwned[address(_swapHelper)].add(
                 tLiquidity
             );
     }
@@ -464,10 +454,6 @@ contract GenericToken is Context, IERC20, Ownable {
             _tOwned[_charityWalletAddress] = _tOwned[_charityWalletAddress].add(
                 tCharity
             );
-    }
-
-    function claimTokens() public onlyOwner {
-        payable(_owner).transfer(address(this).balance);
     }
 
     function calculateTaxFee(uint256 _amount) private view returns (uint256) {
@@ -581,12 +567,12 @@ contract GenericToken is Context, IERC20, Ownable {
         // this is so that we can capture exactly the amount of BUSD that the
         // swap creates, and not make the liquidity event include any BUSD that
         // has been manually sent to the contract
-        uint256 initialBalance = _busdToken.balanceOf(_swapHelperAddress);
+        uint256 initialBalance = _busdToken.balanceOf(address(_swapHelper));
         // swap tokens for BUSD
         swapTokensForBUSD(half); // <- this breaks the ETH -> HATE swap when swap+liquify is triggered
 
         // how much BUSD did we just swap into?
-        uint256 newBalance = _busdToken.balanceOf(_swapHelperAddress).sub(
+        uint256 newBalance = _busdToken.balanceOf(address(_swapHelper)).sub(
             initialBalance
         );
 
@@ -602,21 +588,21 @@ contract GenericToken is Context, IERC20, Ownable {
         path[0] = address(this);
         path[1] = address(_busdToken);
 
-        _approve(_swapHelperAddress, address(uniswapV2Router), tokenAmount);
+        _approve(address(_swapHelper), address(uniswapV2Router), tokenAmount);
         // make the swap
         uniswapV2Router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             tokenAmount,
             0, // accept any amount of BUSD
             path,
             // NOTE: this will fail in UniswapV2Pair ! has to be 3rd party contract
-            _swapHelperAddress, // fails in pair swap ....
+            address(_swapHelper), // fails in pair swap ....
             block.timestamp
         );
     }
 
     function addLiquidity(uint256 tokenAmount, uint256 busdAmount) private {
         // approve token transfer to cover all possible scenarios
-        _approve(_swapHelperAddress, address(uniswapV2Router), tokenAmount);
+        _approve(address(_swapHelper), address(uniswapV2Router), tokenAmount);
 
         // add the liquidity
         uniswapV2Router.addLiquidity(

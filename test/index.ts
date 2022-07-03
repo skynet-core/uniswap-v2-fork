@@ -7,8 +7,8 @@ use(solidity);
 
 describe("EasyBit", () => {
   const daiAmount = ethers.utils.parseEther('1000000000');
-  let wallet: Signer, charityWallet: Signer;
 
+  let wallet: Signer, charityWallet: Signer;
   let account: any;
   let charityAccount: any;
   let WETHFactory: ContractFactory;
@@ -81,13 +81,13 @@ describe("EasyBit", () => {
     const part = accountBallance.div(100);
     await wethInstance.deposit({ value: part });
 
-    console.log(`WETH address: ${wethInstance.address}`);
-    console.log(`BUSD address: ${busdInstance.address}`);
-    console.log(`USDT address: ${usdtInstance.address}`);
-    console.log(`EBT address: ${ebtInstance.address}`);
+    console.log(`WETH          address: ${wethInstance.address}`);
+    console.log(`BUSD          address: ${busdInstance.address}`);
+    console.log(`USDT          address: ${usdtInstance.address}`);
+    console.log(`EBT           address: ${ebtInstance.address}`);
     console.log(`EBT/BUSD pair address: ${pairAddress_}`);
     // console.log(`Factory address: ${factoryInstance.address}`);
-    console.log(`Router address: ${routerInstance.address}`);
+    console.log(`Router        address: ${routerInstance.address}`);
   });
 
   it("deploy assembler and match bytecodes", async function () {
@@ -142,8 +142,6 @@ describe("EasyBit", () => {
     expect(reserves._reserve0.gt(0)).to.equal(true, "must not be 0");
     expect(reserves._reserve1.gt(0)).to.equal(true, "must not be 0");
 
-
-
     // now we need to buy some BUSD tokens with ETH
     await routerInstance.swapExactETHForTokensSupportingFeeOnTransferTokens(
       0, // any amount
@@ -170,8 +168,8 @@ describe("EasyBit", () => {
       account,
       ~~(Date.now() / 1000) + 15000
     );
-    // todo: verify reserves ...
 
+    // todo: verify reserves ...
     // store account EBT ballance ...
     let otherAccountBalance: BigNumber;
     let otherBusdBalance: BigNumber;
@@ -244,7 +242,6 @@ describe("EasyBit", () => {
         lastEbtBalance = currEbtBalance;
       }
     }
-
     // check charity wallet ...
     currEbtBalance = await ebtInstance.connect(charityWallet).balanceOf(charityAccount);
     expect(currEbtBalance.gt(0)).to.equal(true, "charity wallet should receive some fees");

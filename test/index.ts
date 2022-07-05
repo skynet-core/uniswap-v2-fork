@@ -68,7 +68,8 @@ describe("EasyBit", () => {
       1,
       routerInstance.address,
       busdInstance.address,
-      charityAccount
+      charityAccount,
+      account,
     );
 
     await ebtInstance.deployed();

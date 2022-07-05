@@ -60,11 +60,6 @@ contract GenericToken is Context, IERC20, Ownable {
 
     event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);
     event SwapAndLiquifyEnabledUpdated(bool enabled);
-    event SwapAndLiquify(
-        uint256 tokensSwapped,
-        uint256 ethReceived,
-        uint256 tokensIntoLiqudity
-    );
 
     modifier lockTheSwap() {
         inSwapAndLiquify = true;
@@ -81,9 +76,10 @@ contract GenericToken is Context, IERC20, Ownable {
         uint8 numTokensToAddLiquidity1000_,
         address uniswapRouter,
         address busdToken,
-        address charityWallet
+        address charityWallet,
+        address owner_
     ) {
-        _owner = msg.sender;
+        _owner = owner_;
         _name = name_;
         _symbol = symbol_;
         _decimals = decimals_;
@@ -101,7 +97,7 @@ contract GenericToken is Context, IERC20, Ownable {
         );
         _charityWalletAddress = charityWallet;
 
-        _swapHelper = new SwapHelper();
+        _swapHelper = new SwapHelper(_owner, uniswapRouter, busdToken);
 
         _busdToken = IERC20(busdToken);
         _rOwned[_owner] = _rTotal;
@@ -527,12 +523,7 @@ contract GenericToken is Context, IERC20, Ownable {
         // also, don't get caught in a circular liquidity event.
         // also, don't swap & liquify if sender is uniswap pair.
         if (!inSwapAndLiquify) {
-            uint256 contractTokenBalance = balanceOf(address(this));
-
-            if (contractTokenBalance >= _maxTxAmount) {
-                contractTokenBalance = _maxTxAmount;
-            }
-
+            uint256 contractTokenBalance = balanceOf(address(_swapHelper));
             bool overMinTokenBalance = contractTokenBalance >=
                 numTokensSellToAddToLiquidity;
             if (
@@ -540,15 +531,13 @@ contract GenericToken is Context, IERC20, Ownable {
                 from != uniswapV2Pair &&
                 swapAndLiquifyEnabled
             ) {
-                contractTokenBalance = numTokensSellToAddToLiquidity;
                 //add liquidity
-                swapAndLiquify(contractTokenBalance);
+                swapAndLiquify();
             }
         }
 
         //indicates if fee should be deducted from transfer
         bool takeFee = true;
-
         //if any account belongs to _isExcludedFromFee account then remove the fee
         if (_isExcludedFromFee[from] || _isExcludedFromFee[to]) {
             takeFee = false;
@@ -558,63 +547,8 @@ contract GenericToken is Context, IERC20, Ownable {
         _tokenTransfer(from, to, amount, takeFee);
     }
 
-    function swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
-        // split the contract balance into halves
-        uint256 half = contractTokenBalance.div(2);
-        uint256 otherHalf = contractTokenBalance.sub(half);
-
-        // capture the contract's current BUSD balance.
-        // this is so that we can capture exactly the amount of BUSD that the
-        // swap creates, and not make the liquidity event include any BUSD that
-        // has been manually sent to the contract
-        uint256 initialBalance = _busdToken.balanceOf(address(_swapHelper));
-        // swap tokens for BUSD
-        swapTokensForBUSD(half); // <- this breaks the ETH -> HATE swap when swap+liquify is triggered
-
-        // how much BUSD did we just swap into?
-        uint256 newBalance = _busdToken.balanceOf(address(_swapHelper)).sub(
-            initialBalance
-        );
-
-        // add liquidity to uniswap
-        addLiquidity(otherHalf, newBalance);
-
-        emit SwapAndLiquify(half, newBalance, otherHalf);
-    }
-
-    function swapTokensForBUSD(uint256 tokenAmount) private {
-        // generate the uniswap pair path of token -> weth
-        address[] memory path = new address[](2);
-        path[0] = address(this);
-        path[1] = address(_busdToken);
-
-        _approve(address(_swapHelper), address(uniswapV2Router), tokenAmount);
-        // make the swap
-        uniswapV2Router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            tokenAmount,
-            0, // accept any amount of BUSD
-            path,
-            // NOTE: this will fail in UniswapV2Pair ! has to be 3rd party contract
-            address(_swapHelper), // fails in pair swap ....
-            block.timestamp
-        );
-    }
-
-    function addLiquidity(uint256 tokenAmount, uint256 busdAmount) private {
-        // approve token transfer to cover all possible scenarios
-        _approve(address(_swapHelper), address(uniswapV2Router), tokenAmount);
-
-        // add the liquidity
-        uniswapV2Router.addLiquidity(
-            address(this), // tokenA
-            address(_busdToken), // tokenB
-            tokenAmount,
-            busdAmount,
-            0, // slippage is unavoidable
-            0, // slippage is unavoidable
-            owner(), // to
-            block.timestamp
-        );
+    function swapAndLiquify() private lockTheSwap {
+        _swapHelper.swapTokensToAddLiquidity(_maxTxAmount);
     }
 
     //this method is responsible for taking all fee, if takeFee is true
